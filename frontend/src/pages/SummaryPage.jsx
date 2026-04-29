@@ -11,29 +11,73 @@ function SummaryPage() {
   }, []);
 
   const fetchSummary = async () => {
-    const res = await axios.get("http://localhost:5000/api/notes");
-    const note = res.data.find((n) => n._id === id);
-    setSummary(note?.summary);
+    try {
+      const res = await axios.get(
+        `http://localhost:5000/api/notes/${id}`
+      );
+      setSummary(res.data.summary);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  if (!summary) return <p>Loading...</p>;
+  if (!summary)
+    return (
+      <p className="text-center mt-10 text-gray-400">
+        Loading summary...
+      </p>
+    );
 
   return (
-    <div className="max-w-4xl mx-auto bg-white p-6 rounded-xl shadow">
-      <h1 className="text-2xl font-bold mb-4">Summary</h1>
+    <div className="min-h-screen bg-gray-900 text-gray-100 px-6 py-8">
 
-      <h2 className="font-semibold">Short Summary</h2>
-      <p className="mb-4">{summary.short}</p>
+      {/* HEADER */}
+      <h1 className="text-3xl font-bold text-center mb-10">
+        📄 Summary
+      </h1>
 
-      <h2 className="font-semibold">Detailed Summary</h2>
-      <p className="mb-4">{summary.detailed}</p>
+      <div className="max-w-4xl mx-auto space-y-8">
 
-      <h2 className="font-semibold">Key Points</h2>
-      <ul className="list-disc ml-6">
-        {summary.keyPoints.map((point, i) => (
-          <li key={i}>{point}</li>
-        ))}
-      </ul>
+        {/* SHORT SUMMARY */}
+        <div className="bg-indigo-900 p-6 rounded-2xl shadow">
+          <h2 className="text-xl font-semibold text-indigo-300 mb-3">
+            Short Summary
+          </h2>
+          <p className="text-gray-200 leading-relaxed">
+            {summary.short}
+          </p>
+        </div>
+
+        {/* DETAILED SUMMARY */}
+        <div className="bg-gray-800 p-6 rounded-2xl shadow">
+          <h2 className="text-xl font-semibold mb-3">
+            Detailed Summary
+          </h2>
+          <p className="text-gray-300 whitespace-pre-line">
+            {summary.detailed}
+          </p>
+        </div>
+
+        {/* KEY POINTS */}
+        <div className="bg-green-900 p-6 rounded-2xl shadow">
+          <h2 className="text-xl font-semibold text-green-300 mb-4">
+            Key Points
+          </h2>
+
+          <ul className="space-y-3">
+            {summary.keyPoints.map((point, i) => (
+              <li
+                key={i}
+                className="bg-gray-800 p-3 rounded-lg shadow-sm flex items-start gap-3"
+              >
+                <span className="text-green-400 font-bold">•</span>
+                <span className="text-gray-200">{point}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+      </div>
     </div>
   );
 }

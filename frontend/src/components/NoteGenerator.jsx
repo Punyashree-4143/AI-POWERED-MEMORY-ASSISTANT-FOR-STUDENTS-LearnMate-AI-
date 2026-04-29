@@ -3,9 +3,6 @@ import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
 export default function NoteGenerator() {
-  // ==============================
-  // Persistent State
-  // ==============================
   const [text, setText] = useState(() => {
     return localStorage.getItem("noteText") || "";
   });
@@ -18,21 +15,16 @@ export default function NoteGenerator() {
 
   const navigate = useNavigate();
 
-  // Save text automatically
   useEffect(() => {
     localStorage.setItem("noteText", text);
   }, [text]);
 
-  // Save noteId automatically
   useEffect(() => {
     if (noteId) {
       localStorage.setItem("noteId", noteId);
     }
   }, [noteId]);
 
-  // ==============================
-  // Create Note
-  // ==============================
   const createNote = async () => {
     if (!text) {
       alert("Enter text or upload PDF first");
@@ -58,9 +50,6 @@ export default function NoteGenerator() {
     }
   };
 
-  // ==============================
-  // Upload PDF
-  // ==============================
   const uploadPDF = async (file) => {
     if (!file) return;
 
@@ -85,9 +74,6 @@ export default function NoteGenerator() {
     }
   };
 
-  // ==============================
-  // Summarize → Redirect
-  // ==============================
   const handleSummarize = async () => {
     let id = noteId;
 
@@ -110,9 +96,6 @@ export default function NoteGenerator() {
     }
   };
 
-  // ==============================
-  // Flashcards → Redirect
-  // ==============================
   const handleFlashcards = async () => {
     let id = noteId;
 
@@ -135,9 +118,6 @@ export default function NoteGenerator() {
     }
   };
 
-  // ==============================
-  // Quiz → Redirect
-  // ==============================
   const handleQuiz = async () => {
     let id = noteId;
 
@@ -161,28 +141,22 @@ export default function NoteGenerator() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto bg-white shadow-xl rounded-2xl p-8 space-y-6">
+    <div className="max-w-4xl mx-auto bg-gray-900 text-gray-100 shadow-xl rounded-2xl p-8 space-y-6">
 
-      <h1 className="text-3xl font-bold text-center text-indigo-600">
+      <h1 className="text-3xl font-bold text-center text-indigo-400">
         AI Learning Assistant
       </h1>
 
-      {/* ==============================
-          Text Input
-      ============================== */}
       <textarea
-        className="w-full p-4 border rounded-xl focus:ring-2 focus:ring-indigo-400 focus:outline-none"
+        className="w-full p-4 border border-gray-700 bg-gray-800 text-white rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none placeholder-gray-400"
         rows="7"
         placeholder="Paste your notes here..."
         value={text}
         onChange={(e) => setText(e.target.value)}
       />
 
-      {/* ==============================
-          Upload PDF
-      ============================== */}
       <div className="flex items-center gap-4">
-        <label className="bg-gray-200 px-5 py-2 rounded-xl cursor-pointer hover:bg-gray-300 transition">
+        <label className="bg-gray-700 text-gray-200 px-5 py-2 rounded-xl cursor-pointer hover:bg-gray-600 transition">
           Upload PDF
           <input
             type="file"
@@ -193,34 +167,31 @@ export default function NoteGenerator() {
         </label>
 
         {loading && (
-          <span className="text-indigo-600 font-medium">
+          <span className="text-indigo-400 font-medium">
             Processing...
           </span>
         )}
       </div>
 
-      {/* ==============================
-          Action Buttons
-      ============================== */}
       <div className="flex flex-wrap gap-4 justify-center pt-4">
 
         <button
           onClick={handleSummarize}
-          className="bg-indigo-500 text-white px-6 py-2 rounded-xl hover:bg-indigo-600 transition"
+          className="bg-indigo-600 text-white px-6 py-2 rounded-xl hover:bg-indigo-700 transition"
         >
           Summarize
         </button>
 
         <button
           onClick={handleFlashcards}
-          className="bg-green-500 text-white px-6 py-2 rounded-xl hover:bg-green-600 transition"
+          className="bg-green-600 text-white px-6 py-2 rounded-xl hover:bg-green-700 transition"
         >
           Flashcards
         </button>
 
         <button
           onClick={handleQuiz}
-          className="bg-purple-500 text-white px-6 py-2 rounded-xl hover:bg-purple-600 transition"
+          className="bg-purple-600 text-white px-6 py-2 rounded-xl hover:bg-purple-700 transition"
         >
           Quiz
         </button>
