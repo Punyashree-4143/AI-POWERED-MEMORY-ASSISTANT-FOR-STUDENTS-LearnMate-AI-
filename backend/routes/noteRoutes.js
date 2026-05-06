@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const multer = require("multer");
-const { getDocument } = require("pdfjs-dist/legacy/build/pdf.js");
 
 const Note = require("../models/Note");
 const {
@@ -9,12 +8,41 @@ const {
   generateFlashcards,
   generateQuiz,
 } = require("../config/aiService");
+const { extractTextFromUpload } = require("../services/textExtractionService");
 
 // ==============================
 // Multer Memory Storage
 // ==============================
 const storage = multer.memoryStorage();
-const upload = multer({ storage });
+const upload = multer({
+  storage,
+  limits: {
+    fileSize: 25 * 1024 * 1024,
+  },
+  fileFilter: (req, file, cb) => {
+    if (
+      file.mimetype === "application/pdf" ||
+      file.mimetype.startsWith("image/")
+    ) {
+      cb(null, true);
+      return;
+    }
+
+    cb(new Error("Only PDF and image files are supported"));
+  },
+});
+
+function handleUpload(req, res, next) {
+  upload.single("file")(req, res, (error) => {
+    if (!error) {
+      next();
+      return;
+    }
+
+    const statusCode = error instanceof multer.MulterError ? 400 : 415;
+    res.status(statusCode).json({ error: error.message });
+  });
+}
 
 // ==============================
 // Create Note (Manual)
@@ -34,37 +62,33 @@ router.post("/create", async (req, res) => {
 });
 
 // ==============================
-// Upload PDF
+// Upload PDF/Image
 // ==============================
-router.post("/upload-pdf", upload.single("file"), async (req, res) => {
+router.post("/upload-pdf", handleUpload, async (req, res) => {
   try {
-    if (!req.file)
-      return res.status(400).json({ message: "No file uploaded" });
+    const { text: extractedText, method } = await extractTextFromUpload(
+      req.file
+    );
 
-    const uint8Array = new Uint8Array(req.file.buffer);
-    const loadingTask = getDocument({ data: uint8Array });
-    const pdf = await loadingTask.promise;
-
-    let extractedText = "";
-
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items.map(item => item.str).join(" ");
-      extractedText += pageText + "\n";
+    if (!extractedText) {
+      return res.status(422).json({
+        message:
+          "No readable text could be extracted. Try a clearer scan or higher-resolution image.",
+      });
     }
 
     const note = new Note({ text: extractedText });
     await note.save();
 
     res.status(201).json({
-      message: "PDF uploaded successfully",
+      message: "Notes uploaded successfully",
+      extractionMethod: method,
       note,
     });
 
   } catch (error) {
-    console.error("PDF Error:", error);
-    res.status(500).json({ error: error.message });
+    console.error("Upload Extraction Error:", error);
+    res.status(error.statusCode || 500).json({ error: error.message });
   }
 });
 

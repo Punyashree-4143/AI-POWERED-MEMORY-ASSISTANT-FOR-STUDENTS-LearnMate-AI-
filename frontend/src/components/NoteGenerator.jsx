@@ -70,7 +70,11 @@ export default function NoteGenerator() {
       setLoading(false);
     } catch (error) {
       setLoading(false);
-      alert("PDF upload failed");
+      alert(
+        error.response?.data?.message ||
+          error.response?.data?.error ||
+          "Upload failed"
+      );
     }
   };
 
@@ -157,11 +161,11 @@ export default function NoteGenerator() {
 
       <div className="flex items-center gap-4">
         <label className="bg-gray-700 text-gray-200 px-5 py-2 rounded-xl cursor-pointer hover:bg-gray-600 transition">
-          Upload PDF
+          Upload PDF/Image
           <input
             type="file"
             hidden
-            accept=".pdf"
+            accept=".pdf,image/*"
             onChange={(e) => uploadPDF(e.target.files[0])}
           />
         </label>
