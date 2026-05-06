@@ -23,6 +23,89 @@ async function safeAIRequest(prompt, temperature = 0.5) {
   }
 }
 
+function splitTextIntoChunks(text, maxLength = 3500) {
+  const paragraphs = String(text || "").split(/\n{2,}/);
+  const chunks = [];
+  let currentChunk = "";
+
+  for (const paragraph of paragraphs) {
+    const candidate = currentChunk
+      ? `${currentChunk}\n\n${paragraph}`
+      : paragraph;
+
+    if (candidate.length <= maxLength) {
+      currentChunk = candidate;
+      continue;
+    }
+
+    if (currentChunk) {
+      chunks.push(currentChunk);
+    }
+
+    if (paragraph.length <= maxLength) {
+      currentChunk = paragraph;
+      continue;
+    }
+
+    for (let index = 0; index < paragraph.length; index += maxLength) {
+      chunks.push(paragraph.slice(index, index + maxLength));
+    }
+
+    currentChunk = "";
+  }
+
+  if (currentChunk) {
+    chunks.push(currentChunk);
+  }
+
+  return chunks;
+}
+
+/* =====================================================
+   Clean OCR Text For Display
+===================================================== */
+async function correctOcrTextForDisplay(text) {
+  try {
+    if (!text || typeof text !== "string") {
+      return text || "";
+    }
+
+    const chunks = splitTextIntoChunks(text);
+    const correctedChunks = [];
+
+    for (const chunk of chunks) {
+      const prompt = `
+You are correcting OCR text from handwritten academic notes.
+
+Task:
+- Convert distorted OCR into readable English.
+- Fix broken words, punctuation, spacing, and obvious OCR mistakes.
+- Preserve technical terms, abbreviations, formulas, headings, bullet points, and examples.
+- Do NOT summarize.
+- Do NOT add new concepts.
+- Do NOT remove meaningful content.
+- Keep the same study-note style and approximate order.
+- Return only the corrected text. No markdown fence. No explanation.
+
+Examples:
+OCR: "WhcJ-t rs .fTOfJmen-+atfon"
+Corrected: "What is fragmentation?"
+
+OCR text:
+${chunk}
+`;
+
+      const corrected = await safeAIRequest(prompt, 0.1);
+      correctedChunks.push(corrected.trim());
+    }
+
+    return correctedChunks.join("\n\n").trim();
+  } catch (err) {
+    console.error("OCR Correction Error:", err.message);
+    return text;
+  }
+}
+
 /* =====================================================
    🧠 Robust JSON Extractor (Balanced Parsing)
 ===================================================== */
@@ -152,6 +235,83 @@ function normalizeQuiz(quiz) {
 /* =====================================================
    📘 Generate Summary
 ===================================================== */
+function slugifyId(value, fallback) {
+  const slug = String(value || "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+
+  return slug || fallback;
+}
+
+function normalizeMindMap(map) {
+  const nodes = Array.isArray(map?.nodes) ? map.nodes : [];
+  const normalizedNodes = nodes.slice(0, 18).map((node, index) => {
+    const label = String(node.label || node.concept || `Concept ${index + 1}`)
+      .trim()
+      .slice(0, 80);
+    const id = slugifyId(node.id || label, `node-${index + 1}`);
+    const parentId =
+      index === 0
+        ? null
+        : node.parentId
+        ? slugifyId(node.parentId, null)
+        : slugifyId(nodes[0]?.id || nodes[0]?.label || "root", "root");
+
+    return {
+      id,
+      label,
+      parentId,
+      description: String(node.description || "").trim().slice(0, 220),
+      type: ["root", "topic", "subtopic", "detail"].includes(node.type)
+        ? node.type
+        : index === 0
+        ? "root"
+        : "topic",
+    };
+  });
+
+  if (normalizedNodes.length > 0) {
+    normalizedNodes[0].parentId = null;
+    normalizedNodes[0].type = "root";
+  }
+
+  return {
+    title: String(map?.title || normalizedNodes[0]?.label || "Mind Map").trim(),
+    nodes: normalizedNodes,
+  };
+}
+
+function normalizeInfographic(infographic) {
+  const validAccents = ["purple", "cyan", "emerald", "amber", "pink"];
+  const validTypes = [
+    "definition",
+    "formula",
+    "process",
+    "comparison",
+    "example",
+  ];
+  const cards = Array.isArray(infographic?.cards) ? infographic.cards : [];
+  const flow = Array.isArray(infographic?.flow) ? infographic.flow : [];
+
+  return {
+    title: String(infographic?.title || "Visual Study Guide").trim(),
+    cards: cards.slice(0, 8).map((card, index) => ({
+      title: String(card.title || `Key Idea ${index + 1}`).trim().slice(0, 80),
+      content: String(card.content || "").trim().slice(0, 360),
+      type: validTypes.includes(card.type) ? card.type : "definition",
+      accent: validAccents.includes(card.accent)
+        ? card.accent
+        : validAccents[index % validAccents.length],
+    })),
+    flow: flow.slice(0, 6).map((step, index) => ({
+      title: String(step.title || `Step ${index + 1}`).trim().slice(0, 80),
+      description: String(step.description || "").trim().slice(0, 280),
+    })),
+  };
+}
+
 async function generateSummary(text) {
   try {
     if (!text || typeof text !== "string") {
@@ -257,7 +417,99 @@ ${text.slice(0, 6000)}
 /* =====================================================
    🚀 Exports
 ===================================================== */
+async function generateMindMap(text) {
+  try {
+    const prompt = `
+Create an educational concept tree from these notes in strict JSON format.
+
+Rules:
+- Use 1 root concept.
+- Use 6 to 14 total nodes.
+- parentId must refer to another node id.
+- Prefer technical terms from the notes.
+- Do not include markdown or explanations outside JSON.
+
+{
+  "title": "Main topic",
+  "nodes": [
+    {
+      "id": "operating-system",
+      "label": "Operating System",
+      "parentId": null,
+      "description": "Central topic",
+      "type": "root"
+    },
+    {
+      "id": "memory-management",
+      "label": "Memory Management",
+      "parentId": "operating-system",
+      "description": "Handles allocation and deallocation of memory",
+      "type": "topic"
+    }
+  ]
+}
+
+Notes:
+${text.slice(0, 6000)}
+`;
+
+    const aiText = await safeAIRequest(prompt, 0.25);
+    return normalizeMindMap(extractJSON(aiText));
+  } catch (err) {
+    console.error("Mind Map Error:", err.message);
+    throw new Error("Mind map generation failed");
+  }
+}
+
+async function generateInfographic(text) {
+  try {
+    const prompt = `
+Convert these notes into infographic-ready study content in strict JSON format.
+
+Rules:
+- Extract key definitions, formulas, examples, comparisons, and processes.
+- Use concise educational language.
+- Preserve technical terms.
+- Create visual-card content, not a long essay.
+- Do not include markdown or explanations outside JSON.
+
+{
+  "title": "Visual Study Guide",
+  "cards": [
+    {
+      "title": "Key Definition",
+      "content": "Concise explanation",
+      "type": "definition",
+      "accent": "purple"
+    }
+  ],
+  "flow": [
+    {
+      "title": "Step 1",
+      "description": "What happens first"
+    }
+  ]
+}
+
+Allowed card types: definition, formula, process, comparison, example.
+Allowed accents: purple, cyan, emerald, amber, pink.
+
+Notes:
+${text.slice(0, 6000)}
+`;
+
+    const aiText = await safeAIRequest(prompt, 0.25);
+    return normalizeInfographic(extractJSON(aiText));
+  } catch (err) {
+    console.error("Infographic Error:", err.message);
+    throw new Error("Infographic generation failed");
+  }
+}
+
 module.exports = {
+  correctOcrTextForDisplay,
+  generateMindMap,
+  generateInfographic,
   generateSummary,
   generateFlashcards,
   generateQuiz,

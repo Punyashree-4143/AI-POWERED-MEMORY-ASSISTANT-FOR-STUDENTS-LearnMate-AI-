@@ -119,6 +119,115 @@ const summarySchema = new mongoose.Schema(
 );
 
 // =============================
+// Visual Aid Schemas
+// =============================
+const mindMapNodeSchema = new mongoose.Schema(
+  {
+    id: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    label: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    parentId: {
+      type: String,
+      default: null,
+    },
+    description: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    type: {
+      type: String,
+      enum: ["root", "topic", "subtopic", "detail"],
+      default: "topic",
+    },
+  },
+  { _id: false }
+);
+
+const mindMapSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    nodes: {
+      type: [mindMapNodeSchema],
+      default: [],
+    },
+  },
+  { _id: false }
+);
+
+const infographicCardSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    content: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    type: {
+      type: String,
+      enum: ["definition", "formula", "process", "comparison", "example"],
+      default: "definition",
+    },
+    accent: {
+      type: String,
+      enum: ["purple", "cyan", "emerald", "amber", "pink"],
+      default: "purple",
+    },
+  },
+  { _id: false }
+);
+
+const infographicStepSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    description: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+const infographicSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    cards: {
+      type: [infographicCardSchema],
+      default: [],
+    },
+    flow: {
+      type: [infographicStepSchema],
+      default: [],
+    },
+  },
+  { _id: false }
+);
+
+// =============================
 // Note Schema
 // =============================
 const noteSchema = new mongoose.Schema(
@@ -142,6 +251,16 @@ const noteSchema = new mongoose.Schema(
     quiz: {
       type: [quizSchema],
       default: [],
+    },
+
+    mindMap: {
+      type: mindMapSchema,
+      default: () => ({}),
+    },
+
+    infographic: {
+      type: infographicSchema,
+      default: () => ({}),
     },
   },
   {

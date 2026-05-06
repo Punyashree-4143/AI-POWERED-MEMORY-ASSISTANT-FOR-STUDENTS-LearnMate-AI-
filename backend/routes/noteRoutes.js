@@ -4,6 +4,9 @@ const multer = require("multer");
 
 const Note = require("../models/Note");
 const {
+  correctOcrTextForDisplay,
+  generateMindMap,
+  generateInfographic,
   generateSummary,
   generateFlashcards,
   generateQuiz,
@@ -77,12 +80,18 @@ router.post("/upload-pdf", handleUpload, async (req, res) => {
       });
     }
 
-    const note = new Note({ text: extractedText });
+    const shouldCorrectOcrText = method.includes("ocr");
+    const displayText = shouldCorrectOcrText
+      ? await correctOcrTextForDisplay(extractedText)
+      : extractedText;
+
+    const note = new Note({ text: displayText });
     await note.save();
 
     res.status(201).json({
       message: "Notes uploaded successfully",
       extractionMethod: method,
+      correctedForDisplay: shouldCorrectOcrText,
       note,
     });
 
@@ -166,6 +175,46 @@ router.post("/quiz/:id", async (req, res) => {
 
   } catch (error) {
     console.error("Quiz Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==============================
+// Mind Map
+// ==============================
+router.post("/mind-map/:id", async (req, res) => {
+  try {
+    const note = await Note.findById(req.params.id);
+    if (!note) return res.status(404).json({ message: "Note not found" });
+
+    const mindMap = await generateMindMap(note.text);
+    note.mindMap = mindMap;
+    await note.save();
+
+    res.json(note);
+
+  } catch (error) {
+    console.error("Mind Map Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==============================
+// Infographic
+// ==============================
+router.post("/infographic/:id", async (req, res) => {
+  try {
+    const note = await Note.findById(req.params.id);
+    if (!note) return res.status(404).json({ message: "Note not found" });
+
+    const infographic = await generateInfographic(note.text);
+    note.infographic = infographic;
+    await note.save();
+
+    res.json(note);
+
+  } catch (error) {
+    console.error("Infographic Error:", error);
     res.status(500).json({ error: error.message });
   }
 });
