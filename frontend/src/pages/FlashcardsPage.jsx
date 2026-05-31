@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 function FlashcardsPage() {
   const { id } = useParams();
   const [flashcards, setFlashcards] = useState([]);
@@ -14,23 +16,23 @@ function FlashcardsPage() {
   const fetchFlashcards = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/notes/${id}`
+        `${API_URL}/api/notes/${id}`
       );
+
       setFlashcards(res.data.flashcards || []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch flashcards:", err);
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 px-6 py-10">
-
       {/* HEADER */}
       <h1 className="text-3xl font-bold text-center mb-10">
         📚 Flashcards
       </h1>
 
-      {/* EMPTY */}
+      {/* EMPTY STATE */}
       {flashcards.length === 0 && (
         <p className="text-center text-gray-400">
           No flashcards available.

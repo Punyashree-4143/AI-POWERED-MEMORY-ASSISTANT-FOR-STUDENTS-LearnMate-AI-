@@ -19,7 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/notes";
+const API_URL = `${import.meta.env.VITE_API_URL}/api/notes`;
 
 const accentClasses = {
   purple: "from-purple-500/30 to-purple-950/30 border-purple-300/20",

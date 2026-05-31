@@ -17,7 +17,7 @@ import {
   Wand2,
 } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/notes";
+const API_URL = import.meta.env.VITE_API_URL;
 
 export default function NoteGenerator() {
   const [text, setText] = useState(() => {

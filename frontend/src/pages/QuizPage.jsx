@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useParams } from "react-router-dom";
 
+const API_URL = `${import.meta.env.VITE_API_URL}/api/notes`;
+
 function QuizPage() {
   const { id } = useParams();
   const [quiz, setQuiz] = useState([]);
@@ -16,32 +18,39 @@ function QuizPage() {
   const fetchQuiz = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/notes/${id}`
+        `${API_URL}/${id}`
       );
+
       setQuiz(res.data.quiz || []);
     } catch (err) {
-      console.error(err);
+      console.error("Failed to fetch quiz:", err);
     }
   };
 
   const handleAnswer = (qIndex, optIndex) => {
     if (answered[qIndex]) return;
 
-    setSelected({ ...selected, [qIndex]: optIndex });
+    setSelected((prev) => ({
+      ...prev,
+      [qIndex]: optIndex,
+    }));
 
     if (quiz[qIndex].correctAnswerIndex === optIndex) {
-      setScore((prev) => prev + quiz[qIndex].marks);
+      setScore((prev) => prev + (quiz[qIndex].marks || 1));
     }
 
-    setAnswered({ ...answered, [qIndex]: true });
+    setAnswered((prev) => ({
+      ...prev,
+      [qIndex]: true,
+    }));
   };
 
   return (
     <div className="min-h-screen bg-gray-900 text-gray-100 px-6 py-8">
-
       {/* HEADER */}
       <div className="max-w-4xl mx-auto mb-8 flex justify-between items-center">
         <h1 className="text-3xl font-bold">🧠 Quiz</h1>
+
         <div className="bg-indigo-600 px-4 py-2 rounded-lg shadow">
           Score: {score}
         </div>
@@ -71,6 +80,7 @@ function QuizPage() {
               {q.options.map((opt, optIndex) => {
                 const isCorrect =
                   q.correctAnswerIndex === optIndex;
+
                 const isSelected =
                   selected[qIndex] === optIndex;
 
@@ -110,7 +120,7 @@ function QuizPage() {
             </div>
 
             {/* EXPLANATION */}
-            {answered[qIndex] && (
+            {answered[qIndex] && q.explanation && (
               <div className="mt-4 p-3 bg-gray-700 rounded-lg text-sm text-gray-300">
                 💡 {q.explanation}
               </div>

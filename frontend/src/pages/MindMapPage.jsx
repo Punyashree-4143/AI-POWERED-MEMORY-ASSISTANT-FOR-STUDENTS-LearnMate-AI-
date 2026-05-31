@@ -12,7 +12,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { Loader2, Network, Sparkles } from "lucide-react";
 
-const API_URL = "http://localhost:5000/api/notes";
+const API_URL = `${import.meta.env.VITE_API_URL}/api/notes`;
 
 function buildFlowData(mindMap) {
   const sourceNodes = mindMap?.nodes || [];

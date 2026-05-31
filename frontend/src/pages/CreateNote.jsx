@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 function CreateNote() {
   const [text, setText] = useState("");
   const [file, setFile] = useState(null);
@@ -9,31 +11,52 @@ function CreateNote() {
 
   const handleCreate = async () => {
     try {
-      if (text.trim()) {
-        const res = await axios.post("http://localhost:5000/api/notes/create", {
-          text,
-        });
-
-        navigate(`/note/${res.data._id}`);
+      if (!text.trim()) {
+        alert("Please enter some text");
+        return;
       }
+
+      const res = await axios.post(
+        `${API_URL}/api/notes/create`,
+        {
+          text,
+        }
+      );
+
+      navigate(`/note/${res.data._id}`);
     } catch (err) {
-      console.error(err);
+      console.error("Create note error:", err);
+      alert("Failed to create note");
     }
   };
 
   const handleUpload = async () => {
     try {
+      if (!file) {
+        alert("Please select a file");
+        return;
+      }
+
       const formData = new FormData();
       formData.append("file", file);
 
       const res = await axios.post(
-        "http://localhost:5000/api/notes/upload-pdf",
-        formData
+        `${API_URL}/api/notes/upload-pdf`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
       navigate(`/note/${res.data.note._id}`);
     } catch (err) {
-      console.error(err);
+      console.error("Upload error:", err);
+      alert(
+        err.response?.data?.message ||
+          "Failed to upload PDF"
+      );
     }
   };
 
@@ -46,16 +69,27 @@ function CreateNote() {
         placeholder="Paste your notes here..."
         value={text}
         onChange={(e) => setText(e.target.value)}
-        style={{ width: "100%", marginBottom: "20px" }}
+        style={{
+          width: "100%",
+          marginBottom: "20px",
+        }}
       />
 
-      <button onClick={handleCreate}>Create From Text</button>
+      <button onClick={handleCreate}>
+        Create From Text
+      </button>
 
       <hr style={{ margin: "30px 0" }} />
 
-      <input type="file" onChange={(e) => setFile(e.target.files[0])} />
+      <input
+        type="file"
+        accept=".pdf,image/*"
+        onChange={(e) => setFile(e.target.files[0])}
+      />
 
-      <button onClick={handleUpload}>Upload PDF</button>
+      <button onClick={handleUpload}>
+        Upload PDF
+      </button>
     </div>
   );
 }
