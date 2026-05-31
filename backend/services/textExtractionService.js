@@ -4,7 +4,7 @@ const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
 
-const pdfPoppler = require("pdf-poppler");
+const { createCanvas } = require("canvas");
 const sharp = require("sharp");
 const { createWorker, PSM } = require("tesseract.js");
 const englishOcrData = require("@tesseract.js-data/eng");
@@ -92,31 +92,52 @@ async function extractSelectablePdfPages(buffer) {
   return pages;
 }
 
-async function findConvertedImage(tempDir, prefix) {
-  const files = await fs.readdir(tempDir);
-  const imageFile = files.find(
-    (file) => file.startsWith(prefix) && /\.(png|jpe?g|tiff)$/i.test(file)
-  );
 
-  if (!imageFile) {
-    throw new Error(`Unable to render PDF page for OCR: ${prefix}`);
-  }
-
-  return path.join(tempDir, imageFile);
-}
 
 async function renderPdfPageToImage(pdfPath, tempDir, pageNumber) {
-  const prefix = `page-${pageNumber}`;
+  const pdfBuffer = await fs.readFile(pdfPath);
 
-  await pdfPoppler.convert(pdfPath, {
-    format: "png",
-    out_dir: tempDir,
-    out_prefix: prefix,
-    page: pageNumber,
-    scale: OCR_IMAGE_SCALE,
+  const loadingTask = getDocument({
+    data: new Uint8Array(pdfBuffer),
   });
 
-  return findConvertedImage(tempDir, prefix);
+  const pdf = await loadingTask.promise;
+
+  try {
+    const page = await pdf.getPage(pageNumber);
+
+    const viewport = page.getViewport({
+      scale: 4.0,
+    });
+
+    const canvas = createCanvas(
+      Math.ceil(viewport.width),
+      Math.ceil(viewport.height)
+    );
+
+    const context = canvas.getContext("2d");
+
+    await page.render({
+      canvasContext: context,
+      viewport,
+    }).promise;
+
+    const imagePath = path.join(
+      tempDir,
+      `page-${pageNumber}.png`
+    );
+
+    await fs.writeFile(
+      imagePath,
+      canvas.toBuffer("image/png")
+    );
+
+    return imagePath;
+  } finally {
+    if (pdf?.destroy) {
+      await pdf.destroy();
+    }
+  }
 }
 
 async function prepareImageForOcr(inputPath, candidateName, preprocessing) {
